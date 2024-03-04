@@ -72,6 +72,8 @@ class RootStack extends Stack {
     });
 
     bastionServerSecurityGroup.addEgressRule(databaseSecurityGroup, Port.tcp(5432), "Allow engress to Database");
+    bastionServerSecurityGroup.addEgressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(443));
+
     databaseSecurityGroup.addIngressRule(bastionServerSecurityGroup, Port.tcp(5432), "Allow ingress from bastion server");
     vpcEndpointSecurityGroup.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(443));
 
@@ -101,17 +103,9 @@ class RootStack extends Stack {
       }),
       ssmSessionPermissions: true,
       vpc,
-      vpcSubnets: { subnetType: SubnetType.PRIVATE_ISOLATED },
+      vpcSubnets: { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
     });
 
-    bastionServer.addUserData(
-      "sudo yum update -y",
-      "sudo amazon-linux-extras enable postgresql14",
-      "sudo yum install postgresql-server -y",
-      "sudo postgresql-setup initdb",
-      "sudo systemctl start postgresql",
-      "sudo systemctl enable postgresql",
-    );
 
     database.connections.allowFrom(bastionServer, Port.tcp(5432), "Allow connections from bastion server");
   }

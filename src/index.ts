@@ -28,13 +28,17 @@ class RootStack extends Stack {
       natGateways: 0,
       subnetConfiguration: [
         {
-          name: "isolated",
+          name: "private",
           subnetType: SubnetType.PRIVATE_ISOLATED,
         },
         {
           name: "public",
           subnetType: SubnetType.PUBLIC,
         },
+        {
+          name: "egress",
+          subnetType: SubnetType.PRIVATE_WITH_EGRESS,
+        }
       ],
     });
 

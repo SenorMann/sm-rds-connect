@@ -35,10 +35,6 @@ class RootStack extends Stack {
           name: "public",
           subnetType: SubnetType.PUBLIC,
         },
-        {
-          name: "egress",
-          subnetType: SubnetType.PRIVATE_WITH_EGRESS,
-        }
       ],
     });
 
@@ -47,13 +43,11 @@ class RootStack extends Stack {
     });
 
     vpc.addInterfaceEndpoint('ssm-messages', {
-      securityGroups: [vpcEndpointSecurityGroup],
       service: InterfaceVpcEndpointAwsService.SSM_MESSAGES,
       subnets: vpc.selectSubnets({ subnetType: SubnetType.PRIVATE_ISOLATED }),
     });
 
     vpc.addInterfaceEndpoint('ssm', {
-      securityGroups: [vpcEndpointSecurityGroup],
       service: InterfaceVpcEndpointAwsService.SSM,
       subnets: vpc.selectSubnets({ subnetType: SubnetType.PRIVATE_ISOLATED }),
     });
@@ -75,13 +69,11 @@ class RootStack extends Stack {
       vpc,
     });
 
-    bastionServerSecurityGroup.addEgressRule(databaseSecurityGroup, Port.tcp(5432), "Allow engress to Database");
-    bastionServerSecurityGroup.addEgressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(443));
-
+    bastionServerSecurityGroup.addEgressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(5432), "Allow egress to Database");
+    bastionServerSecurityGroup.addEgressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(443), "Allow egress to SSM endpoint");
     databaseSecurityGroup.addIngressRule(bastionServerSecurityGroup, Port.tcp(5432), "Allow ingress from bastion server");
-    vpcEndpointSecurityGroup.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(443));
 
-    const database = new DatabaseInstance(this, "database", {
+    new DatabaseInstance(this, "database", {
       allocatedStorage: 5,
       backupRetention: Duration.days(0),
       cloudwatchLogsRetention: RetentionDays.ONE_DAY,
@@ -98,7 +90,7 @@ class RootStack extends Stack {
       vpcSubnets: { subnetType: SubnetType.PRIVATE_ISOLATED },
     });
 
-    const bastionServer = new Instance(this, "bastion-server", {
+    new Instance(this, "bastion-server", {
       allowAllOutbound: false,
       instanceType: InstanceType.of(InstanceClass.T4G, InstanceSize.MICRO),
       machineImage: MachineImage.latestAmazonLinux2023({
@@ -107,11 +99,8 @@ class RootStack extends Stack {
       }),
       ssmSessionPermissions: true,
       vpc,
-      vpcSubnets: { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
+      vpcSubnets: { subnetType: SubnetType.PRIVATE_ISOLATED },
     });
-
-
-    database.connections.allowFrom(bastionServer, Port.tcp(5432), "Allow connections from bastion server");
   }
 }
 

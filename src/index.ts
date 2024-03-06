@@ -38,10 +38,6 @@ class RootStack extends Stack {
       ],
     });
 
-    const vpcEndpointSecurityGroup = new SecurityGroup(this, "vpc-endpoints-sg", {
-      vpc,
-    });
-
     vpc.addInterfaceEndpoint('ssm-messages', {
       service: InterfaceVpcEndpointAwsService.SSM_MESSAGES,
       subnets: vpc.selectSubnets({ subnetType: SubnetType.PRIVATE_ISOLATED }),
@@ -57,12 +53,10 @@ class RootStack extends Stack {
       vpc,
     });
 
-
     const databaseSecret = new DatabaseSecret(this, "database-credentials", {
       username: "malik",
       dbname: "test",
     });
-
 
     const databaseSecurityGroup = new SecurityGroup(this, "database-security-group", {
       allowAllOutbound: false,
@@ -97,6 +91,7 @@ class RootStack extends Stack {
         cachedInContext: false,
         cpuType: AmazonLinuxCpuType.ARM_64,
       }),
+      securityGroup: bastionServerSecurityGroup,
       ssmSessionPermissions: true,
       vpc,
       vpcSubnets: { subnetType: SubnetType.PRIVATE_ISOLATED },

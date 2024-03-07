@@ -24,7 +24,12 @@ jobs:
     
       - name: Install dependencies
         run: npm ci
-        
+
+      - name: Transpile CDK Resource Initializer Code 
+        run: |
+          cd src/cdk-init-fn-code/
+          npm run build
+
       - name: Bootstrap CDK resources
         run: npm run cdk:bootstrap
 

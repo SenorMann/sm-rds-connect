@@ -14,6 +14,7 @@ import {
   SubnetType,
   Vpc
 } from "aws-cdk-lib/aws-ec2";
+import { DockerImageCode } from "aws-cdk-lib/aws-lambda";
 import { RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine, DatabaseSecret, PostgresEngineVersion } from "aws-cdk-lib/aws-rds";
 import { Construct } from "constructs";
@@ -76,8 +77,7 @@ class RootStack extends Stack {
 
     const ckdResourceInitializer = new CdkResourceInitializer(this, "resource-initializer", {
       dbSecretName: databaseSecret.secretName,
-      depsLockFilePath: path.join(__dirname, "./cdk-init-fn-code/package-lock.json"),
-      entry: path.join(__dirname, "./cdk-init-fn-code/src/index.ts"),
+      fnCode: DockerImageCode.fromImageAsset(path.join(__dirname, "./cdk-init-fn-code"), {}),
       fnLogRetention: RetentionDays.ONE_DAY,
       fnMemorySize: 256,
       fnSecurityGroups: [resourceInitializerSg],

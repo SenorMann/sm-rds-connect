@@ -10,9 +10,8 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs"
 
 export interface CdkResourceInitializerProps {
   dbSecretName: string;
-  entry: string;
   vpc: ec2.IVpc
-  depsLockFilePath: string;
+  fnCode: lambda.DockerImageCode;
   subnetsSelection: ec2.SubnetSelection
   fnSecurityGroups: ec2.ISecurityGroup[]
   fnTimeout: Duration
@@ -31,18 +30,16 @@ export default class CdkResourceInitializer extends Construct {
 
     const stack = Stack.of(this);
 
-    const resourceInitializerFn = new NodejsFunction(this, "resource-initializer-fn", {
+    const resourceInitializerFn = new lambda.DockerImageFunction(this, "resource-initializer-fn", {
       architecture: lambda.Architecture.X86_64,
       environment: {
         SECRET_NAME: props.dbSecretName,
       },
-      entry: props.entry,
-      depsLockFilePath: props.depsLockFilePath,
+      code: props.fnCode,
       logRetention: props.fnLogRetention,
       memorySize: props.fnMemorySize,
       securityGroups: props.fnSecurityGroups,
       timeout: props.fnTimeout,
-      runtime: lambda.Runtime.NODEJS_20_X,
       vpc: props.vpc,
       vpcSubnets: props.vpc.selectSubnets(props.subnetsSelection),
     })

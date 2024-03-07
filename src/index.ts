@@ -37,6 +37,10 @@ class RootStack extends Stack {
           name: "public",
           subnetType: SubnetType.PUBLIC,
         },
+        {
+          name: "egress",
+          subnetType: SubnetType.PRIVATE_WITH_EGRESS,
+        }
       ],
     });
 
@@ -72,8 +76,8 @@ class RootStack extends Stack {
 
     const ckdResourceInitializer = new CdkResourceInitializer(this, "resource-initializer", {
       dbSecretName: databaseSecret.secretName,
-      depsLockFilePath: path.join(__dirname, "../cdk-init-code"),
-      entry: path.join(__dirname, "../cdk-init-code/src/index.ts"),
+      depsLockFilePath: path.join(__dirname, "./cdk-init-fn-code/package-lock.json"),
+      entry: path.join(__dirname, "./cdk-init-fn-code/src/index.ts"),
       fnLogRetention: RetentionDays.ONE_DAY,
       fnMemorySize: 256,
       fnSecurityGroups: [resourceInitializerSg],

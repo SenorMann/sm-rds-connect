@@ -1,4 +1,4 @@
-import { App, Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
+import { App, CfnOutput, Duration, RemovalPolicy, Stack, StackProps, Token } from "aws-cdk-lib";
 import {
   AmazonLinuxCpuType,
   Instance,
@@ -17,6 +17,8 @@ import {
 import { RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine, DatabaseSecret, PostgresEngineVersion } from "aws-cdk-lib/aws-rds";
 import { Construct } from "constructs";
+import path from "path";
+import CdkResourceInitializer from "./constructs/resource-initializer";
 
 class RootStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -53,6 +55,11 @@ class RootStack extends Stack {
       vpc,
     });
 
+    const resourceInitializerSg = new SecurityGroup(this, "resource-initializer-sg", {
+      allowAllOutbound: true,
+      vpc,
+    });
+
     const databaseSecret = new DatabaseSecret(this, "database-credentials", {
       username: "malik",
       dbname: "test",
@@ -63,9 +70,18 @@ class RootStack extends Stack {
       vpc,
     });
 
-    bastionServerSecurityGroup.addEgressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(5432), "Allow egress to Database");
-    bastionServerSecurityGroup.addEgressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(443), "Allow egress to SSM endpoint");
-    databaseSecurityGroup.addIngressRule(bastionServerSecurityGroup, Port.tcp(5432), "Allow ingress from bastion server");
+    const ckdResourceInitializer = new CdkResourceInitializer(this, "resource-initializer", {
+      dbSecretName: databaseSecret.secretName,
+      depsLockFilePath: path.join(__dirname, "../cdk-init-code"),
+      entry: path.join(__dirname, "../cdk-init-code/src/index.ts"),
+      fnLogRetention: RetentionDays.ONE_DAY,
+      fnMemorySize: 256,
+      fnSecurityGroups: [resourceInitializerSg],
+      fnTimeout: Duration.minutes(2),
+      config: { credsSecretName: databaseSecret.secretName },
+      vpc,
+      subnetsSelection: { subnetType: SubnetType.PRIVATE_WITH_EGRESS },
+    });
 
     new DatabaseInstance(this, "database", {
       allocatedStorage: 5,
@@ -95,6 +111,16 @@ class RootStack extends Stack {
       ssmSessionPermissions: true,
       vpc,
       vpcSubnets: { subnetType: SubnetType.PRIVATE_ISOLATED },
+    });
+
+    bastionServerSecurityGroup.addEgressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(5432), "Allow egress to Database");
+    bastionServerSecurityGroup.addEgressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(443), "Allow egress to SSM endpoint");
+    databaseSecurityGroup.addIngressRule(bastionServerSecurityGroup, Port.tcp(5432), "Allow ingress from bastion server");
+    databaseSecurityGroup.addIngressRule(resourceInitializerSg, Port.tcp(5432), "Allow connections from resource initializer function");
+    databaseSecret.grantRead(ckdResourceInitializer.function);
+
+    new CfnOutput(this, 'RdsInitFnResponse', {
+      value: Token.asString(ckdResourceInitializer.response)
     });
   }
 }

@@ -28,7 +28,7 @@ jobs:
       - name: Transpile CDK Resource Initializer Code 
         run: |
           cd src/cdk-init-fn-code/
-          npm run build
+          tsc
 
       - name: Bootstrap CDK resources
         run: npm run cdk:bootstrap

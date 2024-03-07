@@ -42,6 +42,7 @@ export default class CdkResourceInitializer extends Construct {
       memorySize: props.fnMemorySize,
       securityGroups: props.fnSecurityGroups,
       timeout: props.fnTimeout,
+      runtime: lambda.Runtime.NODEJS_20_X,
       vpc: props.vpc,
       vpcSubnets: props.vpc.selectSubnets(props.subnetsSelection),
     })
